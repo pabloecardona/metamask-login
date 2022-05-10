@@ -1,23 +1,75 @@
 import logo from './logo.svg';
 import './App.css';
+import Login from './components/Login';
+import { useEffect, useState } from "react";
+
+async function getBalance (address) {
+  const balance = await window.ethereum.request({
+    method: "eth_getBalance",
+    params: [address,"latest"]
+  });
+  console.log(`balance en wei:${balance}`);
+  const balanceEth = parseInt(balance,16) * Math.pow(10,(-18));
+  console.log(`balance en eth:${balanceEth}`);
+  return balanceEth
+}
+
+async function connect (setConnectedAcount) {
+
+  if (!window.ethereum) {
+    alert("Get MetaMask!");
+    return;
+  }
+
+  const accounts = await window.ethereum.request({
+    method: "eth_requestAccounts",
+  });
+
+  const account = accounts[0]
+  const balance = await getBalance(account)
+  setConnectedAcount({
+    number: accounts[0],
+    balance: balance});
+}
+
+async function checkWalletConnected (setConnectedAcount) {
+  if(window.ethereum) {
+    const accounts = await window.ethereum.request({
+      method: "eth_accounts"
+    });
+
+    if (accounts.length > 0) {
+      const account = accounts[0];
+      const balance = await getBalance(account)
+      setConnectedAcount({
+          number: account,
+          balance: balance});
+      return;
+    }
+  }
+}
 
 function App() {
+  const [userAddress, setUserAddress] = useState({})
+
+  useEffect(() => {
+    checkWalletConnected(setUserAddress);
+  },[])
+
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <h1>Welcome!</h1>
+      {userAddress.number ?
+      <>
+        <p>User connected with address: {userAddress.number}</p>
+        <p>Your balance is: {userAddress.balance} Eth</p>
+      </>
+      :
+      <>
+        <p>You can access using MetaMask</p>
+        <button onClick={()=>connect(setUserAddress)}>Connect</button>
+      </>
+      }
     </div>
   );
 }
