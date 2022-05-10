@@ -27,8 +27,9 @@ async function connect (setConnectedAcount) {
 
   const account = accounts[0]
   const balance = await getBalance(account)
+  
   setConnectedAcount({
-    number: accounts[0],
+    number: account,
     balance: balance});
 }
 
@@ -41,11 +42,25 @@ async function checkWalletConnected (setConnectedAcount) {
     if (accounts.length > 0) {
       const account = accounts[0];
       const balance = await getBalance(account)
+
+       const data = {
+        number: account,
+        balance: balance
+      } 
+      
       setConnectedAcount({
           number: account,
           balance: balance});
-      return;
-    }
+      
+          //Acá se envía la info al server:
+       const response = await fetch("http://localhost:3001/api/accounts",{
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(data)
+      }); 
+      const res = await response.json()
+      console.log(res); 
+    } 
   }
 }
 
