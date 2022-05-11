@@ -53,10 +53,15 @@ const server = app.listen(PORT, async (err) => {
     process.exit(1);
   }
 
-  await client.connect();
-  console.log('database connected');
-  database = client.db('accountsDB');
-  collection = database.collection('accounts');
+  try {
+    await client.connect();
+    console.log('Database connected');
+    database = client.db('accountsDB');
+    collection = database.collection('accounts');
+  } catch (error) {
+    console.error(error)
+  }
+  
 
   console.log(`Server running on port ${PORT}`);
 });
