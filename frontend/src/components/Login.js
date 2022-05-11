@@ -1,19 +1,9 @@
-import { useEffect, useState } from "react";
-
-const Login = () => {
-  const [userAddress, setUserAddress] = useState("")
-
-  useEffect(() => {
-
-  },[])
-
-
+export default function Login ({connect, connecting}) {
   return (
     <div className="login">
-      <h1>Welcome!</h1>
-      <p>You can access using Metamask</p>
+      <p>You are ready to connect!</p>
+      {connecting ? 'connecting...' : <button onClick={connect}>Connect to MetaMask</button>}
+      
     </div>
   )
 }
-
-export default Login

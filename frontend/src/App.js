@@ -1,6 +1,9 @@
-import logo from './logo.svg';
+//import logo from './logo.svg';
 import './App.css';
 import Login from './components/Login';
+import Message from './components/Message';
+import AccountData from './components/AccountData';
+
 import { useEffect, useState } from "react";
 
 async function getBalance (address) {
@@ -14,77 +17,98 @@ async function getBalance (address) {
   return balanceEth
 }
 
-async function connect (setConnectedAcount) {
-
-  if (!window.ethereum) {
-    alert("Get MetaMask!");
-    return;
-  }
-
-  const accounts = await window.ethereum.request({
-    method: "eth_requestAccounts",
-  });
-
-  const account = accounts[0]
-  const balance = await getBalance(account)
+async function connect (setConnectedAcount,setConnecting) {
+  setConnecting(true);
+  try {
+    const accounts = await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
   
-  setConnectedAcount({
-    number: account,
-    balance: balance});
+    const accountAddress = accounts[0]
+    const balance = await getBalance(accountAddress)
+    const account = {
+      number: accountAddress,
+      balance: balance
+    } 
+  
+    setConnectedAcount(account);
+  
+    //post data to API
+    saveAccountData(account);
+    
+  } catch (error) {
+    if (error.code === 4001) {
+      // EIP-1193 userRejectedRequest error
+      console.log('Please connect to MetaMask.');
+    } else {
+      console.error(error);
+    }
+  }
+  setConnecting(false);
+  
 }
 
-async function checkWalletConnected (setConnectedAcount) {
+async function checkWalletConnected (setConnectedAcount,setLoading) {
   if(window.ethereum) {
     const accounts = await window.ethereum.request({
       method: "eth_accounts"
     });
 
     if (accounts.length > 0) {
-      const account = accounts[0];
-      const balance = await getBalance(account)
-
-       const data = {
-        number: account,
+      const accountAddress = accounts[0];
+      const balance = await getBalance(accountAddress);
+      const account = {
+        number: accountAddress,
         balance: balance
       } 
       
-      setConnectedAcount({
-          number: account,
-          balance: balance});
+      setConnectedAcount(account);
       
-          //Acá se envía la info al server:
-       const response = await fetch("http://localhost:3001/api/accounts",{
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(data)
-      }); 
-      const res = await response.json()
-      console.log(res); 
+      //post data to API
+      saveAccountData(account);
+
+      
     } 
+    setLoading(false);
   }
+}
+
+async function saveAccountData (account) {
+  const response = await fetch("http://localhost:3001/api/accounts",{
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(account)
+  }); 
+  const res = await response.json()
+  console.log(res); 
 }
 
 function App() {
   const [userAddress, setUserAddress] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [connecting, setConnecting] = useState(false)
 
   useEffect(() => {
-    checkWalletConnected(setUserAddress);
+    setLoading(true)
+    checkWalletConnected(setUserAddress,setLoading);
   },[])
+
 
   return (
     <div className="App">
-      <h1>Welcome!</h1>
-      {userAddress.number ?
-      <>
-        <p>User connected with address: {userAddress.number}</p>
-        <p>Your balance is: {userAddress.balance} Eth</p>
-      </>
+    {
+      !window.ethereum ?
+        <Message />
       :
-      <>
-        <p>You can access using MetaMask</p>
-        <button onClick={()=>connect(setUserAddress)}>Connect</button>
-      </>
-      }
+      (
+        loading ? 'loading...' : (
+          userAddress.number ?
+            <AccountData userAddress={userAddress}/>
+          : 
+            <Login connect={()=>connect(setUserAddress,setConnecting)} connecting={connecting} />
+        )
+      )
+    }
     </div>
   );
 }
