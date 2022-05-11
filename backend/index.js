@@ -1,39 +1,62 @@
-const { request } = require("express");
+require("dotenv").config();
+
 const express = require("express");
 const app = express();
-
-//importamos CORS
 const cors = require("cors");
+const { MongoClient } = require("mongodb");
 
-let account = {
-  number: '123',
-  balance:'10'
-}
+const {MONGO_DB_URI} = process.env
 
-//utilizamos cors, permitiendo el acceso a la API desde cualquier origen
 app.use(cors());
-
 app.use(express.json());
 
-app.post('/api/accounts', (request, response) => {
-  const newAccount = request.body
+let database, collection;
 
-  //validar si address y/o balance están vacíos
+const client = new MongoClient(MONGO_DB_URI);
 
-  account = {
-    number: newAccount.number,
-    balance: newAccount.balance
+//Endpoints
+app.post('/api/accounts', async (request, response) => {
+  const {number, balance} = request.body
+
+  if (!number) {
+    return response.status(400).json({
+      error: "address is missing",
+    });
   }
 
-  console.log(account);
-  response.status(201).json(account)
+  const account = {
+    address: number,
+    balance: balance
+  }
+
+  const filter = { address: number };
+  const options = { upsert: true };
+  const updateDoc = {
+      $set: account,
+    };
+  
+  try {
+    //update existing account or create if not exists
+    const result = await collection.updateOne(filter, updateDoc, options);
+    response.status(201).json(account)
+
+  } catch (error) {
+    console.log(error);
+  }
 })
-//definimos el número de puerto para que lo tome de la variable de entorno
-//en caso de no existir la variable de entorno entonces le asigna el 3001
+
 const PORT = 3001;
 
-//guardamos la información del servidor que se creó, para cerrar la conexión luego
-//de realizar los tests
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async (err) => {
+  if(err){
+    console.log(err);
+    process.exit(1);
+  }
+
+  await client.connect();
+  console.log('database connected');
+  database = client.db('accountsDB');
+  collection = database.collection('accounts');
+
   console.log(`Server running on port ${PORT}`);
 });
